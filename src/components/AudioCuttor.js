@@ -25,7 +25,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
   const [region, setRegion] = useState(null);
   const waveformRef = useRef(null);
   const wavesurferRef = useRef(null);
-  const [redoStack, setRedoStack] = useState([]); 
+  const [redoStack, setRedoStack] = useState([]);
   const [cutHistory, setCutHistory] = useState([]);
   useEffect(() => {
     if (audioFile && waveformRef.current) {
@@ -92,178 +92,99 @@ export default function AudioCutter({ audioFile, onRemove }) {
     setEndTime(end);
   };
 
- const handleCut = () => {
-  if (!waveform || !waveform.backend) return; 
-  const audioBuffer = waveform.backend.getAudioBuffer();
-  if (!audioBuffer) return;
+  // const handleCut = () => {
+  //   if (!waveform || !waveform.backend) return;
+  //   const audioBuffer = waveform.backend.getAudioBuffer();
+  //   if (!audioBuffer) return;
 
-  const startSample = Math.floor(startTime * audioBuffer.sampleRate);
-  const endSample = Math.floor(endTime * audioBuffer.sampleRate);
+  //   const startSample = Math.floor(startTime * audioBuffer.sampleRate);
+  //   const endSample = Math.floor(endTime * audioBuffer.sampleRate);
 
-  const cutSegment = audioBuffer.getChannelData(0).slice(startSample, endSample);
+  //   const cutSegment = audioBuffer
+  //     .getChannelData(0)
+  //     .slice(startSample, endSample);
 
-  const newAudioBuffer = new AudioBuffer({
-    length: cutSegment.length,
-    sampleRate: audioBuffer.sampleRate,
-  });
-  newAudioBuffer.copyToChannel(cutSegment, 0);
+  //   const newAudioBuffer = new AudioBuffer({
+  //     length: cutSegment.length,
+  //     sampleRate: audioBuffer.sampleRate,
+  //   });
+  //   newAudioBuffer.copyToChannel(cutSegment, 0);
 
-  waveform.loadAudioData(newAudioBuffer);
+  //   waveform.loadAudioData(newAudioBuffer);
 
-  setCutHistory((prevHistory) => [
-    ...prevHistory,
-    { start: startTime, end: endTime, segment: cutSegment },
-  ]);
-  setRedoStack([]); 
+  //   setCutHistory((prevHistory) => [
+  //     ...prevHistory,
+  //     { start: startTime, end: endTime, segment: cutSegment },
+  //   ]);
+  //   setRedoStack([]);
 
-  const cutBlob = new Blob([cutSegment], { type: "audio/wav" });
-  const url = URL.createObjectURL(cutBlob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "cut_segment.wav"; 
-  a.click();
-  URL.revokeObjectURL(url);
-};
-  const handleRemove = () => {
-    if (!region) return;
-    const removeSegment = {
-      start: region.start,
-      end: region.end,
-    };
+  //   const cutBlob = new Blob([cutSegment], { type: "audio/wav" });
+  //   const url = URL.createObjectURL(cutBlob);
+  //   const a = document.createElement("a");
+  //   a.href = url;
+  //   a.download = "cut_segment.wav";
+  //   a.click();
+  //   URL.revokeObjectURL(url);
+  // };
+  // const handleRemove = () => {
+  //   if (!region) return;
+  //   const removeSegment = {
+  //     start: region.start,
+  //     end: region.end,
+  //   };
 
-   
-    waveform.clearRegions();
+  //   waveform.clearRegions();
 
-    const totalDuration = waveform.getDuration();
-    const remainingRegions = [];
+  //   const totalDuration = waveform.getDuration();
+  //   const remainingRegions = [];
 
-    if (removeSegment.start > 0) {
-      remainingRegions.push({
-        start: 0,
-        end: removeSegment.start,
-        color: "#FEFFFE", 
-      });
-    }
-    if (removeSegment.end < totalDuration) {
-      remainingRegions.push({
-        start: removeSegment.end,
-        end: totalDuration,
-        color: "#FEFFFE", 
-      });
-    }
+  //   if (removeSegment.start > 0) {
+  //     remainingRegions.push({
+  //       start: 0,
+  //       end: removeSegment.start,
+  //       color: "#FEFFFE",
+  //     });
+  //   }
+  //   if (removeSegment.end < totalDuration) {
+  //     remainingRegions.push({
+  //       start: removeSegment.end,
+  //       end: totalDuration,
+  //       color: "#FEFFFE",
+  //     });
+  //   }
 
+  //   remainingRegions.forEach((region) => waveform.addRegion(region));
 
-    remainingRegions.forEach((region) => waveform.addRegion(region));
-
-    
-    setStartTime(0);
-    setEndTime(totalDuration);
-  };
+  //   setStartTime(0);
+  //   setEndTime(totalDuration);
+  // };
 
   const handleSave = async () => {
-    if (!waveform || !waveform.backend) {
-      console.error("Waveform instance or backend is not defined");
+    if (!waveform) {
+      console.error("Waveform instance is not defined");
       return;
     }
 
-    if (waveform.backend.ac) {
-      const stream = waveform.backend.ac.createMediaStreamDestination().stream;
-      const mediaRecorder = new MediaRecorder(stream);
-
-      let chunks = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: "audio/webm" });
-        const url = URL.createObjectURL(audioBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "cut_audio.webm"; // Save the cut portion
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-
-      mediaRecorder.start();
-
-      setTimeout(() => {
-        mediaRecorder.stop();
-      }, 3000);
-    } else {
-
-      const audioBuffer = waveform.backend.getBuffer(); 
-      const audioBlob = await bufferToWave(audioBuffer);
-
-      const url = URL.createObjectURL(audioBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `full_audio.wav`; 
-      a.click();
-      URL.revokeObjectURL(url);
+    const audioData = waveform;
+    if (!audioData) {
+      console.error("No audio data available");
+      return;
     }
+
+    const blob = new Blob([audioData], { type: "audio/mp3" });
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "audio.mp3";
+    document.body.appendChild(a);
+    a.click();
+
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const bufferToWave = (audioBuffer) => {
-    const numChannels = audioBuffer.numberOfChannels;
-    const length = audioBuffer.length * numChannels * 2 + 44;
-    const buffer = new ArrayBuffer(length);
-    const view = new DataView(buffer);
-    const channels = [];
-
-    for (let i = 0; i < numChannels; i++) {
-      channels.push(audioBuffer.getChannelData(i));
-    }
-
-    let offset = 0;
-    const writeString = (s) => {
-      for (let i = 0; i < s.length; i++) {
-        view.setUint8(offset + i, s.charCodeAt(i));
-      }
-      offset += s.length;
-    };
-
-   
-    writeString("RIFF");
-    view.setUint32(offset, length - 8, true); 
-    offset += 4;
-    writeString("WAVE");
-    writeString("fmt ");
-    view.setUint32(offset, 16, true); 
-    offset += 4;
-    view.setUint16(offset, 1, true); 
-    offset += 2;
-    view.setUint16(offset, numChannels, true); 
-    offset += 2;
-    view.setUint32(offset, audioBuffer.sampleRate, true); 
-    offset += 4;
-    view.setUint32(offset, audioBuffer.sampleRate * 2, true); 
-    offset += 4;
-    view.setUint16(offset, numChannels * 2, true); 
-    offset += 2;
-    view.setUint16(offset, 16, true); 
-    offset += 2;
-    writeString("data");
-    view.setUint32(offset, length - offset - 4, true); 
-    offset += 4;
-
-    for (let i = 0; i < audioBuffer.length; i++) {
-      for (let channel = 0; channel < numChannels; channel++) {
-        const sample = Math.max(-1, Math.min(1, channels[channel][i]));
-        view.setInt16(
-          offset,
-          sample < 0 ? sample * 0x8000 : sample * 0x7fff,
-          true
-        );
-        offset += 2;
-      }
-    }
-
-    return new Blob([view], { type: "audio/wav" });
-  };
   return (
     <Box width="90%" margin="auto" position="relative">
       <div
@@ -332,7 +253,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
       >
         <Button
           leftIcon={<FiScissors />}
-          onClick={handleCut}
+          // onClick={handleCut}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
@@ -348,7 +269,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
 
         <Button
           leftIcon={<FiTrash />}
-          onClick={handleRemove}
+          // onClick={handleRemove}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
@@ -410,7 +331,6 @@ export default function AudioCutter({ audioFile, onRemove }) {
         bottom="0"
         marginLeft="-10px"
       >
-    
         <HStack spacing="20">
           <Button
             onClick={() => waveform && waveform.playPause()}
@@ -436,7 +356,6 @@ export default function AudioCutter({ audioFile, onRemove }) {
           />
         </HStack>
 
-       
         <HStack spacing="4">
           <HStack>
             <Text color="#FFF">Start:</Text>
@@ -478,7 +397,6 @@ export default function AudioCutter({ audioFile, onRemove }) {
           </HStack>
         </HStack>
 
-   
         <HStack>
           <Button
             width="140px"
