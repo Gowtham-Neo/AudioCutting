@@ -18,14 +18,18 @@ export default function Sidebar() {
 
   return (
     <>
-  
       <div
         onClick={() => setOpened(!opened)}
-        style={{ position: "fixed", top: 16, left: 16, zIndex: 1000 }}
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 1000,
+          backgroundColor: "#1C1C26",
+        }}
       >
         <BiMenuAltLeft size={50} color="#EFEEEF" />
       </div>
-
 
       <div
         style={{
@@ -34,19 +38,18 @@ export default function Sidebar() {
           left: 0,
           width: opened ? "6%" : "0",
           height: "100vh",
-          backgroundColor: "#1C1C26", 
+          backgroundColor: "#1C1C26",
           overflow: "hidden",
           transition: "width 0.3s ease",
           zIndex: 999,
         }}
       >
-       
         <ScrollArea
           className="scroll-area"
-          style={{ height: "calc(70vh - 60px)",marginTop:"90%" }}
+          style={{ height: "calc(70vh - 60px)", marginTop: "90%" }}
           scrollbarSize={2}
         >
-          {opened && ( 
+          {opened && (
             <div
               style={{
                 display: "flex",
@@ -67,7 +70,7 @@ export default function Sidebar() {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  height: "100%", 
+                  height: "100%",
                 }}
               >
                 <MdRemoveRedEye
@@ -91,7 +94,7 @@ export default function Sidebar() {
               >
                 <GiTunePitch
                   size={30}
-                  style={{ marginRight: 4, marginTop: 30}}
+                  style={{ marginRight: 4, marginTop: 30 }}
                 />
                 Pitcher
               </Text>
@@ -110,7 +113,7 @@ export default function Sidebar() {
               >
                 <GiSplitArrows
                   size={30}
-                  style={{ marginRight: 4, marginTop: 30}}
+                  style={{ marginRight: 4, marginTop: 30 }}
                 />
                 Splitter
               </Text>
@@ -124,16 +127,16 @@ export default function Sidebar() {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  height: "100%", 
+                  height: "100%",
                 }}
               >
                 <GiMarsPathfinder
                   size={30}
-                  style={{ marginRight: 4, color: "#838390", marginTop: 30}}
+                  style={{ marginRight: 4, color: "#838390", marginTop: 30 }}
                 />
                 Key BPM Finder
               </Text>
-              
+
               <Text
                 color="lightgray"
                 mb="md"
@@ -149,7 +152,7 @@ export default function Sidebar() {
               >
                 <GiBoltCutter
                   size={30}
-                  style={{ marginRight: 2, marginTop: 30}}
+                  style={{ marginRight: 2, marginTop: 30 }}
                 />
                 Cutter
               </Text>
@@ -163,10 +166,10 @@ export default function Sidebar() {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  height: "100%", 
+                  height: "100%",
                 }}
               >
-                <GiJoin size={30} style={{ marginRight: 2, marginTop: 30}} />
+                <GiJoin size={30} style={{ marginRight: 2, marginTop: 30 }} />
                 Joiner
               </Text>
               <Text
@@ -184,7 +187,7 @@ export default function Sidebar() {
               >
                 <FaMicrophoneLines
                   size={30}
-                  style={{ marginRight: 2, marginTop: 30}}
+                  style={{ marginRight: 2, marginTop: 30 }}
                 />
                 Recorder
               </Text>
@@ -198,12 +201,12 @@ export default function Sidebar() {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  height: "100%", 
+                  height: "100%",
                 }}
               >
                 <FaRecordVinyl
                   size={30}
-                  style={{ marginRight: 2, marginTop: 30}}
+                  style={{ marginRight: 2, marginTop: 30 }}
                 />
                 Karaoke
               </Text>

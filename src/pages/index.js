@@ -5,8 +5,8 @@ import AudioUploader from "../components/AudioUploader";
 
 export default function Home() {
   return (
-    <Container>
-      <Sidebar /> 
+    <Container style={{ backgroundColor: "#16161E" }}>
+      <Sidebar />
       <AudioUploader />
     </Container>
   );
