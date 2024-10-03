@@ -397,7 +397,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
       </HStack>
 
       <Text>
-        Time: {startTime.toFixed(1)}s - {endTime.toFixed(1)}s
+        Time: {startTime}s - {endTime}s
       </Text>
       <HStack
         justifyContent="space-between"
@@ -441,7 +441,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
           <HStack>
             <Text color="#FFF">Start:</Text>
             <Input
-              value={startTime.toFixed(1)}
+              value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               type="number"
               width="120px"
@@ -460,7 +460,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
           <HStack>
             <Text color="#FFF">End:</Text>
             <Input
-              value={endTime.toFixed(1)}
+              value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               type="number"
               width="120px"
