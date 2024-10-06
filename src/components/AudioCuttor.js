@@ -1,189 +1,121 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  Button,
-  Box,
-  Text,
-  Input,
-  HStack,
-  IconButton,
-  RangeSlider,
-  RangeSliderTrack,
-  RangeSliderFilledTrack,
-  RangeSliderThumb,
-} from "@chakra-ui/react";
+import { Button, Box, Text, Input, HStack } from "@chakra-ui/react";
 import WaveSurfer from "wavesurfer.js";
+import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { BsFillSkipStartFill } from "react-icons/bs";
-import RegionsPlugin from "wavesurfer.js/plugins/regions";
 import { LiaRedoSolid, LiaUndoSolid } from "react-icons/lia";
 import { FiScissors, FiTrash, FiPlay } from "react-icons/fi";
 
 export default function AudioCutter({ audioFile, onRemove }) {
   const [waveform, setWaveform] = useState(null);
+
+
   const [duration, setDuration] = useState(0);
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
-  const [region, setRegion] = useState(null);
+  const [startTimeMin, setStartTimeMin] = useState(0);
+  const [endTimeMIn, setEndTimeMin] = useState(0);
+  const [cutSegmentURL, setCutSegmentURL] = useState(null);
+
   const waveformRef = useRef(null);
-  const wavesurferRef = useRef(null);
+
   const [redoStack, setRedoStack] = useState([]);
   const [cutHistory, setCutHistory] = useState([]);
-  useEffect(() => {
-    if (audioFile && waveformRef.current) {
-      const wavesurfer = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: "#4CAF50",
-        progressColor: "#4CAF50",
-        height: 100,
-        responsive: true,
-        plugins: [
-          RegionsPlugin.create({
-            regions: [
-              {
-                start: 0,
-                end: 5,
-                color: "#FEFFFE",
-                drag: true,
-                resize: true,
-              },
-            ],
-          }),
-        ],
-      });
 
-      wavesurferRef.current = wavesurfer;
+  const regions = RegionsPlugin.create();
 
+useEffect(() => {
+  if (audioFile && waveformRef.current) {
+    const wavesurfer = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor: "#4CAF50",
+      progressColor: "#4CAF50",
+      height: 100,
+      responsive: true,
+      plugins: [regions],
+    });
+
+    const loadAudio = (audioURL) => {
+      wavesurfer.load(audioURL);
+    };
+
+    if (cutSegmentURL) {
+      loadAudio(cutSegmentURL);
+    } else {
       const reader = new FileReader();
       reader.onload = (event) => {
-        wavesurfer.load(event.target.result);
+        loadAudio(event.target.result);
       };
       reader.readAsDataURL(audioFile);
-
-      wavesurfer.on("ready", () => {
-        const totalDuration = wavesurfer.getDuration();
-        setDuration(totalDuration);
-        setEndTime(totalDuration);
-      });
-
-      wavesurfer.on("region-created", (newRegion) => {
-        setRegion(newRegion);
-        setStartTime(newRegion.start);
-        setEndTime(newRegion.end);
-      });
-
-      wavesurfer.on("region-update-end", (updatedRegion) => {
-        setStartTime(updatedRegion.start);
-        setEndTime(updatedRegion.end);
-      });
-
-      setWaveform(wavesurfer);
-
-      return () => {
-        wavesurfer.destroy();
-      };
     }
-  }, [audioFile]);
 
-  const handleSliderChange = (value) => {
-    const [start, end] = value;
-    if (region) {
-      region.update({ start, end });
-    }
-    setStartTime(start);
-    setEndTime(end);
-  };
+    wavesurfer.on("decode", () => {
+      setDuration(wavesurfer.getDuration());
+      regions.addRegion({
+        start: 0,
+        end: wavesurfer.getDuration(),
+        color: "rgba(25, 255, 255, 0.5)",
+        backgroundColor: "green",
+        drag: false,
+        resize: true,
+      });
+    });
 
-  // const handleCut = () => {
-  //   if (!waveform || !waveform.backend) return;
-  //   const audioBuffer = waveform.backend.getAudioBuffer();
-  //   if (!audioBuffer) return;
+    regions.on("region-updated", (region) => {
+      setStartTime(region.start);
+      setEndTime(region.end);
+      setStartTimeMin((region.start/60).toFixed(2));
+      setEndTimeMin((region.end/60).toFixed(2));
+    });
 
-  //   const startSample = Math.floor(startTime * audioBuffer.sampleRate);
-  //   const endSample = Math.floor(endTime * audioBuffer.sampleRate);
+    setWaveform(wavesurfer);
 
-  //   const cutSegment = audioBuffer
-  //     .getChannelData(0)
-  //     .slice(startSample, endSample);
+    return () => {
+      wavesurfer.destroy();
+    };
+  }
+}, [cutSegmentURL, audioFile]);
 
-  //   const newAudioBuffer = new AudioBuffer({
-  //     length: cutSegment.length,
-  //     sampleRate: audioBuffer.sampleRate,
-  //   });
-  //   newAudioBuffer.copyToChannel(cutSegment, 0);
 
-  //   waveform.loadAudioData(newAudioBuffer);
+const handleCut = () => {
+  if (startTime >= endTime || startTime < 0 || endTime > duration) {
+    console.error("Invalid start or end time.");
+    return;
+  }
 
-  //   setCutHistory((prevHistory) => [
-  //     ...prevHistory,
-  //     { start: startTime, end: endTime, segment: cutSegment },
-  //   ]);
-  //   setRedoStack([]);
 
-  //   const cutBlob = new Blob([cutSegment], { type: "audio/wav" });
-  //   const url = URL.createObjectURL(cutBlob);
-  //   const a = document.createElement("a");
-  //   a.href = url;
-  //   a.download = "cut_segment.wav";
-  //   a.click();
-  //   URL.revokeObjectURL(url);
-  // };
-  // const handleRemove = () => {
-  //   if (!region) return;
-  //   const removeSegment = {
-  //     start: region.start,
-  //     end: region.end,
-  //   };
+  const originalAudioBlob = new Blob([audioFile], { type: audioFile.type });
+  const cutSegment = originalAudioBlob.slice(startTime * 17500, endTime * 17500 );
 
-  //   waveform.clearRegions();
-
-  //   const totalDuration = waveform.getDuration();
-  //   const remainingRegions = [];
-
-  //   if (removeSegment.start > 0) {
-  //     remainingRegions.push({
-  //       start: 0,
-  //       end: removeSegment.start,
-  //       color: "#FEFFFE",
-  //     });
-  //   }
-  //   if (removeSegment.end < totalDuration) {
-  //     remainingRegions.push({
-  //       start: removeSegment.end,
-  //       end: totalDuration,
-  //       color: "#FEFFFE",
-  //     });
-  //   }
-
-  //   remainingRegions.forEach((region) => waveform.addRegion(region));
-
-  //   setStartTime(0);
-  //   setEndTime(totalDuration);
-  // };
+ 
+  const newCutSegmentURL = URL.createObjectURL(cutSegment);
+  setCutSegmentURL(newCutSegmentURL);
+};
 
   const handleSave = async () => {
-    if (!waveform) {
-      console.error("Waveform instance is not defined");
+    if (!audioFile) {
+      console.error("Original audio file is not defined");
       return;
     }
 
-    const audioData = waveform;
-    if (!audioData) {
-      console.error("No audio data available");
-      return;
+    try {
+
+      const a = document.createElement("a");
+      if (cutSegmentURL){
+        a.href = cutSegmentURL;
+      }else{
+        a.href = URL.createObjectURL(audioFile);
+      }
+      a.download = audioFile.name;
+      document.body.appendChild(a);
+      a.click(); 
+      document.body.removeChild(a); 
+      URL.revokeObjectURL(url); 
+    } catch (error) {
+      console.error("Error saving audio file:", error);
     }
-
-    const blob = new Blob([audioData], { type: "audio/mp3" });
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "audio.mp3";
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
+
 
   return (
     <Box width="90%" margin="auto" position="relative">
@@ -197,54 +129,6 @@ export default function AudioCutter({ audioFile, onRemove }) {
         }}
       ></div>
 
-      <RangeSlider
-        aria-label={["start", "end"]}
-        value={[startTime, endTime]}
-        onChange={handleSliderChange}
-        min={0}
-        max={duration}
-        step={0.1}
-        style={{ marginBottom: "20px", border: "2px solid #FFF" }}
-        orientation="horizontal"
-      >
-        <RangeSliderTrack>
-          <RangeSliderFilledTrack bg="#4CAF50" />
-        </RangeSliderTrack>
-
-        <RangeSliderThumb
-          index={0}
-          boxSize={6}
-          bg="transparent"
-          zIndex="99"
-          border="none"
-          _before={{
-            content: '""',
-            position: "absolute",
-            height: "150px",
-            width: "10px",
-            backgroundColor: "#6AE0C4",
-            top: "-150px",
-            transform: "translateX(-50%)",
-          }}
-        />
-        <RangeSliderThumb
-          index={1}
-          boxSize={6}
-          bg="transparent"
-          border="none"
-          zIndex="99"
-          _before={{
-            content: '""',
-            position: "absolute",
-            height: "150px",
-            width: "10px",
-            backgroundColor: "#6AE0C4",
-            top: "-150px",
-            transform: "translateX(-50%)",
-          }}
-        />
-      </RangeSlider>
-
       <HStack
         spacing="8"
         marginBottom="20px"
@@ -253,7 +137,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
       >
         <Button
           leftIcon={<FiScissors />}
-          // onClick={handleCut}
+          onClick={handleCut}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
@@ -269,7 +153,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
 
         <Button
           leftIcon={<FiTrash />}
-          // onClick={handleRemove}
+          onClick={onRemove}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
@@ -286,7 +170,6 @@ export default function AudioCutter({ audioFile, onRemove }) {
 
         <Button
           leftIcon={<LiaUndoSolid />}
-          // onClick={handleUndo}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
@@ -302,7 +185,6 @@ export default function AudioCutter({ audioFile, onRemove }) {
 
         <Button
           leftIcon={<LiaRedoSolid />}
-          // onClick={handleRedo}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
@@ -317,9 +199,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
         ></Button>
       </HStack>
 
-      <Text>
-        Time: {startTime}s - {endTime}s
-      </Text>
+
       <HStack
         justifyContent="space-between"
         alignItems="center"
@@ -344,6 +224,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
               border: "none",
               borderRadius: "30px",
               fontSize: "20px",
+              cursor: "pointer",
             }}
           >
             <FiPlay size="20px" />
@@ -353,6 +234,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
             backgroundColor="transparent"
             color="#FFF"
             fontSize="20px"
+            cursor="pointer"
           />
         </HStack>
 
@@ -360,8 +242,8 @@ export default function AudioCutter({ audioFile, onRemove }) {
           <HStack>
             <Text color="#FFF">Start:</Text>
             <Input
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              value={startTimeMin}
+              onChange={(e) => setStartTimeMin(e.target.value)}
               type="number"
               width="120px"
               height="40px"
@@ -379,8 +261,8 @@ export default function AudioCutter({ audioFile, onRemove }) {
           <HStack>
             <Text color="#FFF">End:</Text>
             <Input
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              value={endTimeMIn}
+              onChange={(e) => setEndTimeMin(e.target.value)}
               type="number"
               width="120px"
               height="40px"
@@ -407,6 +289,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
             style={{
               borderRadius: "30px",
               fontSize: "18px",
+              cursor: "pointer",
             }}
           >
             <Text color="white">format: </Text>
@@ -423,6 +306,7 @@ export default function AudioCutter({ audioFile, onRemove }) {
             style={{
               borderRadius: "30px",
               fontSize: "18px",
+              cursor: "pointer",
             }}
           >
             Save
