@@ -4,7 +4,7 @@ import { AiOutlineClose } from "react-icons/ai";
 import { IconLock } from "@tabler/icons-react";
 import AudioCutter from "./AudioCuttor";
 
-export default function AudioUploader() {
+export default function AudioUploader({isActive}) {
   const [audioFile, setAudioFile] = useState(null);
   const [showCutter, setShowCutter] = useState(false);
   const fileInputRef = useRef(null);
@@ -41,7 +41,8 @@ export default function AudioUploader() {
           justifyContent: "center",
           height: "100vh",
           textAlign: "center",
-          marginLeft: "6%",
+          marginLeft: isActive ? "10%" : "0",
+          transition: "margin-left 0.5s ease",
         }}
       >
         {showCutter ? (
@@ -72,9 +73,9 @@ export default function AudioUploader() {
               }}
             />
 
-       
             <AudioCutter
               audioFile={audioFile}
+              isActive={isActive}
               onClose={handleCloseCutter}
               onRemove={() => setAudioFile(null)}
             />
@@ -83,7 +84,6 @@ export default function AudioUploader() {
           <>
             {audioFile ? (
               <>
-           
                 <Title
                   order={1}
                   style={{
@@ -138,7 +138,7 @@ export default function AudioUploader() {
                       cursor: "pointer",
                       fontSize: "17px",
                       backgroundColor: "#16161E",
-                      border:"none"
+                      border: "none",
                     }}
                   >
                     Cancel

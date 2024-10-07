@@ -1,22 +1,23 @@
 import { useEffect, useState, useRef } from "react";
 import { Button, Box, Text, Input, HStack } from "@chakra-ui/react";
+import Hover from "wavesurfer.js/dist/plugins/hover.esm.js";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { BsFillSkipStartFill } from "react-icons/bs";
 import { LiaRedoSolid, LiaUndoSolid } from "react-icons/lia";
 import { FiScissors, FiTrash, FiPlay } from "react-icons/fi";
-
-export default function AudioCutter({ audioFile, onRemove }) {
+export default function AudioCutter({ audioFile, isActive }) {
   const [waveform, setWaveform] = useState(null);
-
-
+  const [format, setFormat] = useState("mp3");
   const [duration, setDuration] = useState(0);
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
   const [startTimeMin, setStartTimeMin] = useState(0);
   const [endTimeMIn, setEndTimeMin] = useState(0);
   const [cutSegmentURL, setCutSegmentURL] = useState(null);
-
+  const [isDropupVisible, setDropupVisible] = useState(false);
+  const [initialStartTime, setInitialStartTime] = useState(0); // Initial start time
+  const [initialEndTime, setInitialEndTime] = useState(0);
   const waveformRef = useRef(null);
 
   const [redoStack, setRedoStack] = useState([]);
@@ -24,73 +25,190 @@ export default function AudioCutter({ audioFile, onRemove }) {
 
   const regions = RegionsPlugin.create();
 
-useEffect(() => {
-  if (audioFile && waveformRef.current) {
-    const wavesurfer = WaveSurfer.create({
-      container: waveformRef.current,
-      waveColor: "#4CAF50",
-      progressColor: "#4CAF50",
-      height: 100,
-      responsive: true,
-      plugins: [regions],
-    });
+  useEffect(() => {
+    if (audioFile && waveformRef.current) {
+      const wavesurfer = WaveSurfer.create({
+        container: waveformRef.current,
+        waveColor: "#4CAF50",
+        progressColor: "#4CAF50",
+        cursorColor: "#ddd5e9",
+        cursorWidth: 2,
 
-    const loadAudio = (audioURL) => {
-      wavesurfer.load(audioURL);
-    };
+        height: 90,
+        responsive: true,
+        plugins: [
+          regions,
+          Hover.create({
+            lineColor: "#fff",
+            lineWidth: 2,
+            labelBackground: "#555",
+            labelColor: "#fff",
+            labelSize: "11px",
+          }),
+        ],
+      });
 
-    if (cutSegmentURL) {
-      loadAudio(cutSegmentURL);
-    } else {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        loadAudio(event.target.result);
+      const loadAudio = (audioURL) => {
+        wavesurfer.load(audioURL);
       };
-      reader.readAsDataURL(audioFile);
+
+      if (cutSegmentURL) {
+        loadAudio(cutSegmentURL);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          loadAudio(event.target.result);
+        };
+        reader.readAsDataURL(audioFile);
+      }
+
+      wavesurfer.on("decode", () => {
+        setDuration(wavesurfer.getDuration());
+        regions.addRegion({
+          start: 0,
+          end: wavesurfer.getDuration(),
+          waveColor: "#4CAF50",
+          progressColor: "#4CAF50",
+          color: "rgba(25, 255, 255, 0.1)",
+          drag: true,
+          resize: true,
+          handleWidth: 10,
+        });
+      });
+
+      regions.on("region-updated", (region) => {
+        setStartTime(region.start);
+        setEndTime(region.end);
+        setStartTimeMin((region.start / 60).toFixed(2));
+        setEndTimeMin((region.end / 60).toFixed(2));
+      });
+
+      setEndTimeMin(audioFile.duration);
+      setWaveform(wavesurfer);
+      setInitialStartTime(0);
+      setInitialEndTime(audioFile.duration);
+
+      return () => {
+        wavesurfer.destroy();
+      };
+    }
+  }, [cutSegmentURL, audioFile]);
+
+  const handleCut = () => {
+    if (startTime >= endTime || startTime < 0 || endTime > duration) {
+      console.error("Invalid start or end time.");
+      return;
     }
 
-    wavesurfer.on("decode", () => {
-      setDuration(wavesurfer.getDuration());
-      regions.addRegion({
-        start: 0,
-        end: wavesurfer.getDuration(),
-        color: "rgba(25, 255, 255, 0.5)",
-        backgroundColor: "green",
-        drag: false,
-        resize: true,
-      });
+    setCutHistory([
+      ...cutHistory,
+      {
+        audioURL: cutSegmentURL || URL.createObjectURL(audioFile),
+        startTime,
+        endTime,
+      },
+    ]);
+    setRedoStack([]); // Clear the redo stack on new action
+
+    const originalAudioBlob = new Blob([audioFile], { type: audioFile.type });
+    const cutSegment = originalAudioBlob.slice(
+      startTime * 16250,
+      endTime * 16250
+    );
+
+    const newCutSegmentURL = URL.createObjectURL(cutSegment);
+    setCutSegmentURL(newCutSegmentURL);
+  };
+
+  const handleRemove = () => {
+    if (startTime >= endTime || startTime < 0 || endTime > duration) {
+      console.error("Invalid start or end time.");
+      return;
+    }
+    setCutHistory([
+      ...cutHistory,
+      {
+        audioURL: cutSegmentURL || URL.createObjectURL(audioFile),
+        startTime,
+        endTime,
+      },
+    ]);
+    setRedoStack([]); // Clear the redo stack on new action
+
+    // Convert startTime and endTime to milliseconds
+    const start = startTime * 16250; // convert seconds to milliseconds
+    const end = endTime * 16250;
+
+    // Create a Blob for the original audio file
+    const originalAudioBlob = new Blob([audioFile], { type: audioFile.type });
+
+    // Slice the audio before the removed segment
+    const audioBeforeRemove = originalAudioBlob.slice(0, start);
+
+    // Slice the audio after the removed segment
+    const audioAfterRemove = originalAudioBlob.slice(end);
+
+    // Combine both parts to form the new audio
+    const remainingAudio = new Blob([audioBeforeRemove, audioAfterRemove], {
+      type: audioFile.type,
     });
 
-    regions.on("region-updated", (region) => {
-      setStartTime(region.start);
-      setEndTime(region.end);
-      setStartTimeMin((region.start/60).toFixed(2));
-      setEndTimeMin((region.end/60).toFixed(2));
-    });
+    // Create a new URL for the updated audio
+    const newAudioURL = URL.createObjectURL(remainingAudio);
 
-    setWaveform(wavesurfer);
+    // Update the waveform to reflect the removed segment
+    setCutSegmentURL(newAudioURL);
 
-    return () => {
-      wavesurfer.destroy();
-    };
-  }
-}, [cutSegmentURL, audioFile]);
+    // Clear the region as the audio segment is now removed
+    setStartTime(0);
+    setEndTime(remainingAudio.size / 1000); // Update end time to match the new audio duration
+  };
 
+  const handleUndo = () => {
+    if (cutHistory.length === 0) return;
 
-const handleCut = () => {
-  if (startTime >= endTime || startTime < 0 || endTime > duration) {
-    console.error("Invalid start or end time.");
-    return;
-  }
+    // Save the current state in the redo stack before undoing
+    setRedoStack([
+      ...redoStack,
+      {
+        audioURL: cutSegmentURL || URL.createObjectURL(audioFile),
+        startTime,
+        endTime,
+      },
+    ]);
 
+    // Revert to the previous state
+    const lastCut = cutHistory[cutHistory.length - 1];
+    setCutSegmentURL(lastCut.audioURL);
+    setStartTime(lastCut.startTime);
+    setEndTime(lastCut.endTime);
 
-  const originalAudioBlob = new Blob([audioFile], { type: audioFile.type });
-  const cutSegment = originalAudioBlob.slice(startTime * 17500, endTime * 17500 );
+    // Remove the last entry from the undo stack
+    setCutHistory(cutHistory.slice(0, -1));
+  };
 
- 
-  const newCutSegmentURL = URL.createObjectURL(cutSegment);
-  setCutSegmentURL(newCutSegmentURL);
-};
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+
+    // Save the current state in the undo stack before redoing
+    setCutHistory([
+      ...cutHistory,
+      {
+        audioURL: cutSegmentURL || URL.createObjectURL(audioFile),
+        startTime,
+        endTime,
+      },
+    ]);
+
+    // Restore the next state
+    const nextCut = redoStack[redoStack.length - 1];
+    setCutSegmentURL(nextCut.audioURL);
+    setStartTime(nextCut.startTime);
+    setEndTime(nextCut.endTime);
+
+    // Remove the last entry from the redo stack
+    setRedoStack(redoStack.slice(0, -1));
+  };
 
   const handleSave = async () => {
     if (!audioFile) {
@@ -99,26 +217,28 @@ const handleCut = () => {
     }
 
     try {
-
       const a = document.createElement("a");
-      if (cutSegmentURL){
+      if (cutSegmentURL) {
         a.href = cutSegmentURL;
-      }else{
+      } else {
         a.href = URL.createObjectURL(audioFile);
       }
-      a.download = audioFile.name;
+      const originalFileName = audioFile.name.split(".")[0];
+      const fileNameWithFormat = `${originalFileName}.${format}`;
+      a.download = fileNameWithFormat;
       document.body.appendChild(a);
-      a.click(); 
-      document.body.removeChild(a); 
-      URL.revokeObjectURL(url); 
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
     } catch (error) {
       console.error("Error saving audio file:", error);
     }
   };
 
-
   return (
-    <Box width="90%" margin="auto" position="relative">
+    <Box width="100%" margin="10%" position="relative" style={
+      {margin:"10%"}
+    }>
       <div
         ref={waveformRef}
         style={{
@@ -141,9 +261,15 @@ const handleCut = () => {
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
-          cursor="pointer"
+          disabled={
+            startTime === initialStartTime && endTime === initialEndTime
+          }
           style={{
             border: "none",
+            cursor:
+              startTime === initialStartTime && endTime === initialEndTime
+                ? "not-allowed"
+                : "pointer",
             borderRadius: "6px",
             fontSize: "20px",
           }}
@@ -153,14 +279,20 @@ const handleCut = () => {
 
         <Button
           leftIcon={<FiTrash />}
-          onClick={onRemove}
+          onClick={handleRemove}
           color="#B3B2B3"
           backgroundColor="#1C1D27"
           padding="10px"
           borderRadius="md"
-          cursor="pointer"
+          disabled={
+            startTime === initialStartTime && endTime === initialEndTime
+          }
           style={{
             border: "none",
+            cursor:
+              startTime === initialStartTime && endTime === initialEndTime
+                ? "not-allowed"
+                : "pointer",
             borderRadius: "6px",
             fontSize: "20px",
           }}
@@ -171,6 +303,7 @@ const handleCut = () => {
         <Button
           leftIcon={<LiaUndoSolid />}
           color="#B3B2B3"
+          onClick={handleUndo}
           backgroundColor="#1C1D27"
           padding="10px"
           borderRadius="lg"
@@ -186,6 +319,7 @@ const handleCut = () => {
         <Button
           leftIcon={<LiaRedoSolid />}
           color="#B3B2B3"
+          onClick={handleRedo}
           backgroundColor="#1C1D27"
           padding="10px"
           borderRadius="lg"
@@ -199,17 +333,16 @@ const handleCut = () => {
         ></Button>
       </HStack>
 
-
       <HStack
         justifyContent="space-between"
         alignItems="center"
         padding="10px"
         backgroundColor="#16161E"
-        borderRadius="4px"
-        width="85%"
+        width={isActive ? "85%" : "96%"}
         position="fixed"
         bottom="0"
-        marginLeft="-10px"
+        marginLeft={isActive ? "-10px" : "10px"}
+        borderTop="1px solid #272733"
       >
         <HStack spacing="20">
           <Button
@@ -280,22 +413,68 @@ const handleCut = () => {
         </HStack>
 
         <HStack>
-          <Button
-            width="140px"
-            height="40px"
-            color="white"
-            bg="#16161E"
-            border="1px solid #262633"
-            style={{
-              borderRadius: "30px",
-              fontSize: "18px",
-              cursor: "pointer",
-            }}
-          >
-            <Text color="white">format: </Text>
-            <Text color="#32CD32">mp3</Text>
-          </Button>
+          <div style={{ position: "relative" }}>
+            <Button
+              width="140px"
+              height="40px"
+              color="white"
+              bg="#16161E"
+              border="1px solid #262633"
+              style={{
+                borderRadius: "30px",
+                fontSize: "18px",
+                cursor: "pointer",
+              }}
+              onClick={() => setDropupVisible(!isDropupVisible)} // Toggle drop-up visibility
+            >
+              <Text color="white">format: </Text>
+              <Text color="#32CD32">{format}</Text>
+            </Button>
 
+            {/* Drop-up for format selection */}
+            {isDropupVisible && (
+              <div
+                style={{
+                  position: "absolute",
+                  width: "140px",
+                  bottom: "50px",
+                  background: "#1F1F28",
+                  borderRadius: "10px",
+                  textAlign: "left",
+                  padding: "15px",
+                  zIndex: 1,
+                  border: "1px solid #262633",
+                }}
+              >
+                <div
+                  style={{
+                    color: format === "mp3" ? "#32CD32" : "white",
+                    padding: "10px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    setFormat("mp3");
+                    setDropupVisible(false); // Close drop-up after selection
+                  }}
+                >
+                  mp3
+                </div>
+                <div
+                  style={{
+                    color: format === "wav" ? "#32CD32" : "white",
+                    padding: "10px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    setFormat("wav");
+                    setDropupVisible(false); // Close drop-up after selection
+                  }}
+                >
+                  wav
+                </div>
+              </div>
+            )}
+          </div>
           <Button
             backgroundColor="#E0E0E5"
             color="#000"
