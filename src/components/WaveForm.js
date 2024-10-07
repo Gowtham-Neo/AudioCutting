@@ -1,4 +1,4 @@
-// components/Waveform.js
+
 import React, { useEffect } from "react";
 import WaveSurfer from "wavesurfer.js";
 

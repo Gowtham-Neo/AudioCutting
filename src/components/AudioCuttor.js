@@ -16,7 +16,7 @@ export default function AudioCutter({ audioFile, isActive }) {
   const [endTimeMIn, setEndTimeMin] = useState(0);
   const [cutSegmentURL, setCutSegmentURL] = useState(null);
   const [isDropupVisible, setDropupVisible] = useState(false);
-  const [initialStartTime, setInitialStartTime] = useState(0); // Initial start time
+  const [initialStartTime, setInitialStartTime] = useState(0); 
   const [initialEndTime, setInitialEndTime] = useState(0);
   const waveformRef = useRef(null);
 
@@ -92,7 +92,7 @@ export default function AudioCutter({ audioFile, isActive }) {
         wavesurfer.destroy();
       };
     }
-  }, [cutSegmentURL, audioFile]);
+  }, [cutSegmentURL, audioFile, regions]);
 
   const handleCut = () => {
     if (startTime >= endTime || startTime < 0 || endTime > duration) {
@@ -108,7 +108,7 @@ export default function AudioCutter({ audioFile, isActive }) {
         endTime,
       },
     ]);
-    setRedoStack([]); // Clear the redo stack on new action
+    setRedoStack([]); 
 
     const originalAudioBlob = new Blob([audioFile], { type: audioFile.type });
     const cutSegment = originalAudioBlob.slice(
@@ -133,41 +133,36 @@ export default function AudioCutter({ audioFile, isActive }) {
         endTime,
       },
     ]);
-    setRedoStack([]); // Clear the redo stack on new action
+    setRedoStack([]); 
 
-    // Convert startTime and endTime to milliseconds
-    const start = startTime * 16250; // convert seconds to milliseconds
+  
+    const start = startTime * 16250; 
     const end = endTime * 16250;
 
-    // Create a Blob for the original audio file
+  
     const originalAudioBlob = new Blob([audioFile], { type: audioFile.type });
 
-    // Slice the audio before the removed segment
+    
     const audioBeforeRemove = originalAudioBlob.slice(0, start);
 
-    // Slice the audio after the removed segment
+  
     const audioAfterRemove = originalAudioBlob.slice(end);
 
-    // Combine both parts to form the new audio
     const remainingAudio = new Blob([audioBeforeRemove, audioAfterRemove], {
       type: audioFile.type,
     });
 
-    // Create a new URL for the updated audio
     const newAudioURL = URL.createObjectURL(remainingAudio);
 
-    // Update the waveform to reflect the removed segment
+
     setCutSegmentURL(newAudioURL);
 
-    // Clear the region as the audio segment is now removed
     setStartTime(0);
-    setEndTime(remainingAudio.size / 1000); // Update end time to match the new audio duration
+    setEndTime(remainingAudio.size / 1000); 
   };
 
   const handleUndo = () => {
     if (cutHistory.length === 0) return;
-
-    // Save the current state in the redo stack before undoing
     setRedoStack([
       ...redoStack,
       {
@@ -177,20 +172,20 @@ export default function AudioCutter({ audioFile, isActive }) {
       },
     ]);
 
-    // Revert to the previous state
+    
     const lastCut = cutHistory[cutHistory.length - 1];
     setCutSegmentURL(lastCut.audioURL);
     setStartTime(lastCut.startTime);
     setEndTime(lastCut.endTime);
 
-    // Remove the last entry from the undo stack
+    
     setCutHistory(cutHistory.slice(0, -1));
   };
 
   const handleRedo = () => {
     if (redoStack.length === 0) return;
 
-    // Save the current state in the undo stack before redoing
+ 
     setCutHistory([
       ...cutHistory,
       {
@@ -200,13 +195,13 @@ export default function AudioCutter({ audioFile, isActive }) {
       },
     ]);
 
-    // Restore the next state
+  
     const nextCut = redoStack[redoStack.length - 1];
     setCutSegmentURL(nextCut.audioURL);
     setStartTime(nextCut.startTime);
     setEndTime(nextCut.endTime);
 
-    // Remove the last entry from the redo stack
+ 
     setRedoStack(redoStack.slice(0, -1));
   };
 
@@ -425,7 +420,7 @@ export default function AudioCutter({ audioFile, isActive }) {
                 fontSize: "18px",
                 cursor: "pointer",
               }}
-              onClick={() => setDropupVisible(!isDropupVisible)} // Toggle drop-up visibility
+              onClick={() => setDropupVisible(!isDropupVisible)} 
             >
               <Text color="white">format: </Text>
               <Text color="#32CD32">{format}</Text>
@@ -467,7 +462,7 @@ export default function AudioCutter({ audioFile, isActive }) {
                   }}
                   onClick={() => {
                     setFormat("wav");
-                    setDropupVisible(false); // Close drop-up after selection
+                    setDropupVisible(false);
                   }}
                 >
                   wav
