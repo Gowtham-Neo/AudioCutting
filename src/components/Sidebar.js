@@ -1,7 +1,6 @@
+import { useState, useEffect } from "react";
 import { ScrollArea, Text, UnstyledButton } from "@mantine/core";
-import { IconCut, IconMusic, IconPitch, IconMenu2 } from "@tabler/icons-react";
 import Image from "next/image";
-import { useState } from "react";
 import indian from "../images/image.png";
 import { MdOutlineContactSupport, MdRemoveRedEye } from "react-icons/md";
 import {
@@ -13,8 +12,31 @@ import {
 } from "react-icons/gi";
 import { FaMicrophoneLines, FaRecordVinyl } from "react-icons/fa6";
 import { BiMenuAltLeft } from "react-icons/bi";
-export default function Sidebar({ opened, setOpened }) {
 
+export default function Sidebar() {
+  const [opened, setOpened] = useState(false);
+const [screenWidth, setScreenWidth] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const getSidebarWidth = () => {
+    if (screenWidth < 768) {
+      return opened ? "100px" : "0"; 
+    } else {
+      return opened ? "100px" : "0"; 
+    }
+  };
   return (
     <>
       <div
@@ -35,7 +57,7 @@ export default function Sidebar({ opened, setOpened }) {
           position: "fixed",
           top: 0,
           left: 0,
-          width: opened ? "6%" : "0",
+          width: getSidebarWidth(),
           height: "100vh",
           backgroundColor: "#1C1C26",
           overflow: "hidden",
@@ -247,7 +269,6 @@ export default function Sidebar({ opened, setOpened }) {
             }}
           />{" "}
         </div>
-        
       </div>
     </>
   );
